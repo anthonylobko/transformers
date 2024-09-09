@@ -250,12 +250,12 @@ class WhisperAttention(nn.Module):
         self.is_decoder = is_decoder
         self.is_causal = is_causal
 
-        if layer_idx is None and is_decoder:
-            logger.warning_once(
-                f"Instantiating a decoder {self.__class__.__name__} without passing `layer_idx` is not recommended and "
-                "will to errors during the forward call, if caching is used. Please make sure to provide a `layer_idx` "
-                "when creating this class."
-            )
+        # if layer_idx is None and is_decoder:
+            # logger.warning_once(
+            #     f"Instantiating a decoder {self.__class__.__name__} without passing `layer_idx` is not recommended and "
+            #     "will to errors during the forward call, if caching is used. Please make sure to provide a `layer_idx` "
+            #     "when creating this class."
+            # )
         self.layer_idx = layer_idx
 
         self.k_proj = nn.Linear(embed_dim, embed_dim, bias=False)
@@ -484,10 +484,10 @@ class WhisperSdpaAttention(WhisperAttention):
         """Input shape: Batch x Time x Channel"""
         if output_attentions or layer_head_mask is not None:
             # TODO: Improve this warning with e.g. `model.config._attn_implementation = "manual"` once this is implemented.
-            logger.warning_once(
-                "WhisperModel is using WhisperSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True` or `layer_head_mask` not None. Falling back to the manual attention"
-                ' implementation, but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
-            )
+            # logger.warning_once(
+            #     "WhisperModel is using WhisperSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True` or `layer_head_mask` not None. Falling back to the manual attention"
+            #     ' implementation, but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
+            # )
             return super().forward(
                 hidden_states,
                 key_value_states=key_value_states,
@@ -632,36 +632,14 @@ class WhisperEncoderLayer(nn.Module):
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = residual + hidden_states
 
-        def clamp_hidden(hidden_states):
-            return torch.clamp(
+        hidden_states = torch.clamp(
                 hidden_states,
                 min=-torch.finfo(hidden_states.dtype).max + 1000,
                 max=torch.finfo(hidden_states.dtype).max - 1000
             )
 
-        def return_hidden(hidden_states):
-            return hidden_states
-
-        hidden_states = torch.cond(
-            (hidden_states.dtype == torch.float16) & (torch.isinf(hidden_states).any() | torch.isnan(hidden_states).any()),
-            clamp_hidden,
-            return_hidden,
-            [hidden_states]
-        )
-
         outputs = (hidden_states,)
-
-        def return_outputs(outputs, attn_weights):
-            return outputs
-        def return_concat_attn(outputs, attn_weights):
-            return outputs + (attn_weights,)
-        
-        outputs = torch.cond(
-            output_attentions,
-            return_concat_attn,
-            return_outputs,
-            (outputs, attn_weights,)
-        )
+        outputs += (attn_weights,)
 
         return outputs
 
@@ -1257,11 +1235,11 @@ class WhisperDecoder(WhisperPreTrainedModel):
                 past_key_values = EncoderDecoderCache(past_key_values, DynamicCache())
             elif not isinstance(past_key_values, EncoderDecoderCache):
                 return_legacy_cache = True
-                logger.warning_once(
-                    "Passing a tuple of `past_key_values` is deprecated and will be removed in Transformers v4.43.0. "
-                    "You should pass an instance of `EncoderDecoderCache` instead, e.g. "
-                    "`past_key_values=EncoderDecoderCache.from_legacy_cache(past_key_values)`."
-                )
+                # logger.warning_once(
+                #     "Passing a tuple of `past_key_values` is deprecated and will be removed in Transformers v4.43.0. "
+                #     "You should pass an instance of `EncoderDecoderCache` instead, e.g. "
+                #     "`past_key_values=EncoderDecoderCache.from_legacy_cache(past_key_values)`."
+                # )
                 past_key_values = EncoderDecoderCache.from_legacy_cache(past_key_values)
 
         past_key_values_length = 0
