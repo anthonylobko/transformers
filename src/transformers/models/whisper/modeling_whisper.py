@@ -632,16 +632,36 @@ class WhisperEncoderLayer(nn.Module):
         hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
         hidden_states = residual + hidden_states
 
-        if hidden_states.dtype == torch.float16 and (
-            torch.isinf(hidden_states).any() or torch.isnan(hidden_states).any()
-        ):
-            clamp_value = torch.finfo(hidden_states.dtype).max - 1000
-            hidden_states = torch.clamp(hidden_states, min=-clamp_value, max=clamp_value)
+        def clamp_hidden(hidden_states):
+            return torch.clamp(
+                hidden_states,
+                min=-torch.finfo(hidden_states.dtype).max + 1000,
+                max=torch.finfo(hidden_states.dtype).max - 1000
+            )
+
+        def return_hidden(hidden_states):
+            return hidden_states
+
+        hidden_states = torch.cond(
+            (hidden_states.dtype == torch.float16) & (torch.isinf(hidden_states).any() | torch.isnan(hidden_states).any()),
+            clamp_hidden,
+            return_hidden,
+            [hidden_states]
+        )
 
         outputs = (hidden_states,)
 
-        if output_attentions:
-            outputs += (attn_weights,)
+        def return_outputs(outputs, attn_weights):
+            return outputs
+        def return_concat_attn(outputs, attn_weights):
+            return outputs + (attn_weights,)
+        
+        outputs = torch.cond(
+            output_attentions,
+            return_concat_attn,
+            return_outputs,
+            (outputs, attn_weights,)
+        )
 
         return outputs
 
