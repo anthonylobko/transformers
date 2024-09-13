@@ -940,8 +940,12 @@ class WhisperGenerationMixin(GenerationMixin):
     def _prepare_segments(prompt_ids, batch_size, generation_config):
         if prompt_ids is not None and generation_config.prompt_condition_type == "first-segment":
             prev_sot_token_id = getattr(generation_config, "prev_sot_token_id", None)
-            prompt_ids = prompt_ids[1:] if prompt_ids[0] == prev_sot_token_id else prompt_ids
-            current_segments = [[{"tokens": prompt_ids}] for _ in range(batch_size)]
+            if len(prompt_ids) == batch_size and len(prompt_ids[0]) > 0:
+                prompts_ids = [prompt_id[1:] if prompt_id[0] == prev_sot_token_id else prompt_id for prompt_id in prompt_ids]
+                current_segments = [[{"tokens": prompt_id}] for prompt_id in prompt_ids]
+            else:
+                prompt_ids = prompt_ids[1:] if prompt_ids[0] == prev_sot_token_id else prompt_ids
+                current_segments = [[{"tokens": prompt_ids}] for _ in range(batch_size)]
         else:
             current_segments = [[] for _ in range(batch_size)]
 
@@ -1704,7 +1708,11 @@ class WhisperGenerationMixin(GenerationMixin):
 
             kwargs["decoder_attention_mask"] = decoder_input_ids != generation_config.pad_token_id
         elif prompt_ids is not None:
-            prev_tokens = prompt_ids[None].repeat(decoder_input_ids.shape[0], 1)
+            prev_tokens = None
+            if len(prompt_ids) == decoder_input_ids.shape[0] and len(prompt_ids[0]) > 0:
+                prev_tokens = torch.tensor(prompt_ids)
+            else:
+                prev_tokens = prompt_ids[None].repeat(decoder_input_ids.shape[0], 1)
             decoder_input_ids = torch.cat([prev_tokens, decoder_input_ids], dim=-1)
             # make sure `"decoder_attention_mask"` is not passed to forward
             kwargs.pop("decoder_attention_mask", None)
