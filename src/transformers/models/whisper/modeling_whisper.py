@@ -482,21 +482,21 @@ class WhisperSdpaAttention(WhisperAttention):
         cache_position: Optional[torch.LongTensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         """Input shape: Batch x Time x Channel"""
-        if output_attentions or layer_head_mask is not None:
-            # TODO: Improve this warning with e.g. `model.config._attn_implementation = "manual"` once this is implemented.
-            # logger.warning_once(
-            #     "WhisperModel is using WhisperSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True` or `layer_head_mask` not None. Falling back to the manual attention"
-            #     ' implementation, but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
-            # )
-            return super().forward(
-                hidden_states,
-                key_value_states=key_value_states,
-                past_key_value=past_key_value,
-                attention_mask=attention_mask,
-                layer_head_mask=layer_head_mask,
-                output_attentions=output_attentions,
-                cache_position=cache_position,
-            )
+        # if output_attentions or layer_head_mask is not None:
+        #     # TODO: Improve this warning with e.g. `model.config._attn_implementation = "manual"` once this is implemented.
+        #     # logger.warning_once(
+        #     #     "WhisperModel is using WhisperSdpaAttention, but `torch.nn.functional.scaled_dot_product_attention` does not support `output_attentions=True` or `layer_head_mask` not None. Falling back to the manual attention"
+        #     #     ' implementation, but specifying the manual implementation will be required from Transformers version v5.0.0 onwards. This warning can be removed using the argument `attn_implementation="eager"` when loading the model.'
+        #     # )
+        #     return super().forward(
+        #         hidden_states,
+        #         key_value_states=key_value_states,
+        #         past_key_value=past_key_value,
+        #         attention_mask=attention_mask,
+        #         layer_head_mask=layer_head_mask,
+        #         output_attentions=output_attentions,
+        #         cache_position=cache_position,
+        #     )
 
         # if key_value_states are provided this layer is used as a cross-attention layer
         # for the decoder
@@ -552,6 +552,15 @@ class WhisperSdpaAttention(WhisperAttention):
             is_causal=is_causal,
         )
 
+        attn_weights = torch.nn.functional.scaled_dot_product_attention(
+            query_states,
+            key_states,
+            torch.eye(torch.sqrt(value_states.shape[-1]).item()).reshape((1,1,1,-1)).repeat((value_states.shape[0], value_states.shape[1], value_states.shape[2], 1)),
+            attn_mask=causal_mask,
+            dropout_p=self.dropout if self.training else 0.0,
+            is_causal=is_causal,
+        )
+
         if attn_output.size() != (bsz, self.num_heads, tgt_len, self.head_dim):
             raise ValueError(
                 f"`attn_output` should be of size {(bsz, self.num_heads, tgt_len, self.head_dim)}, but is"
@@ -559,14 +568,14 @@ class WhisperSdpaAttention(WhisperAttention):
             )
 
         attn_output = attn_output.transpose(1, 2)
-
+        attn_weights = attn_weights.transpose(1, 2)
         # Use the `embed_dim` from the config (stored in the class) rather than `hidden_state` because `attn_output` can be
         # partitioned across GPUs when using tensor-parallelism.
         attn_output = attn_output.reshape(bsz, tgt_len, self.embed_dim)
-
+        attn_weights = attn_weights.reshape(bsz, tgt_len, self.embed_dim)
         attn_output = self.out_proj(attn_output)
-
-        return attn_output, None, past_key_value
+        attn_weights = self.out_proj(attn_weights)
+        return attn_output, attn_weights, past_key_value
 
 
 WHISPER_ATTENTION_CLASSES = {
