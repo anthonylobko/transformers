@@ -989,8 +989,10 @@ class WhisperGenerationMixin(GenerationMixin):
         def split_by_batch_index(values, key, batch_idx, is_shortform, beam_indices=None):
             if beam_indices is not None and key == "scores":
                 return [v[beam_idx].cpu() for (v, beam_idx) in zip(values, beam_indices[batch_idx][: len(values)])]
-            if key in ["scores", "encoder_attentions", "encoder_hidden_states", "logits"]:
+            if key in ["scores", "logits"]:
                 return [v[batch_idx].cpu() for v in values]
+            if key in ["encoder_attentions", "encoder_hidden_states"]:
+                return [torch.tensor([]) for v in values]
             if key in ["decoder_attentions", "decoder_hidden_states", "cross_attentions"]:
                 return tuple(tuple(w[batch_idx][None].cpu() for w in v) for v in values)
             elif key == "past_key_values":
