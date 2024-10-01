@@ -970,11 +970,17 @@ class WhisperGenerationMixin(GenerationMixin):
                 num_input_ids=decoder_input_ids.shape[-1],
             )
             seek_outputs["token_timestamps"] = seek_outputs["token_timestamps"][:, start_idx:]
+            print('MEM INFO BEFORE CLEARING:', list((i/ 1e9 for i in torch.cuda.mem_get_info())))
             seek_outputs.cross_attentions = None
             seek_outputs.encoder_attentions = None
             seek_outputs.encoder_hidden_states = None
             seek_outputs.decoder_attentions = None
             seek_outputs.decoder_hidden_states = None
+            print('type(seek_outputs)', type(seek_outputs))
+            print('seek_outputs.keys()', seek_outputs.keys())
+            print('seek_outputs', seek_outputs)
+            print('MEM INFO AFTER CLEARING:', list((i/ 1e9 for i in torch.cuda.mem_get_info())))
+            
 
 
 
