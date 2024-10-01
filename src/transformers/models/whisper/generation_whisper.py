@@ -970,6 +970,13 @@ class WhisperGenerationMixin(GenerationMixin):
                 num_input_ids=decoder_input_ids.shape[-1],
             )
             seek_outputs["token_timestamps"] = seek_outputs["token_timestamps"][:, start_idx:]
+            del seek_outputs["cross_attentions"]
+            del seek_outputs["encoder_attentions"]
+            del seek_outputs["encoder_hidden_states"]
+            del seek_outputs["decoder_attentions"]
+            del seek_outputs["decoder_hidden_states"]
+
+
 
         seek_outputs["sequences"] = seek_outputs["sequences"][:, start_idx:]
 
