@@ -954,7 +954,6 @@ class WhisperGenerationMixin(GenerationMixin):
     def _postprocess_outputs(
         self, seek_outputs, decoder_input_ids, return_token_timestamps, generation_config, is_shortform
     ):
-        import gc
         # remove all previously passed decoder input ids
         start_idx = decoder_input_ids.shape[-1] if not is_shortform else torch.tensor(0)
 
@@ -970,19 +969,7 @@ class WhisperGenerationMixin(GenerationMixin):
                 num_frames=num_frames,
                 num_input_ids=decoder_input_ids.shape[-1],
             )
-            seek_outputs["token_timestamps"] = seek_outputs["token_timestamps"][:, start_idx:]
-            print('MEM INFO BEFORE CLEARING:', list((i/ 1e9 for i in torch.cuda.mem_get_info())))
-            seek_outputs.cross_attentions = None
-            seek_outputs.encoder_attentions = None
-            seek_outputs.encoder_hidden_states = None
-            seek_outputs.decoder_attentions = None
-            seek_outputs.decoder_hidden_states = None
-            torch.cuda.empty_cache()
-            gc.collect()
-            print('MEM INFO AFTER CLEARING:', list((i/ 1e9 for i in torch.cuda.mem_get_info())))
-            
-
-
+            seek_outputs["token_timestamps"] = seek_outputs["token_timestamps"][:, start_idx:]        
 
         seek_outputs["sequences"] = seek_outputs["sequences"][:, start_idx:]
 
