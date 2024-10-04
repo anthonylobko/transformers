@@ -1040,20 +1040,20 @@ class WhisperGenerationMixin(GenerationMixin):
                     )
                     for i in range(len(seek_outputs[0][key]))
                 )
-            elif key == "past_key_values":
-                past_key_value_type = kwargs.get("past_key_values")
-                if seek_outputs[0][key] is not None:
-                    outputs[key] = tuple(
-                        tuple(
-                            torch.stack([v[key][i][j] for v in seek_outputs]).squeeze(1).to(device)
-                            for j in range(len(seek_outputs[0][key][0]))
-                        )
-                        for i in range(len(seek_outputs[0][key]))
-                    )
-                    if past_key_value_type is not None and isinstance(past_key_value_type, EncoderDecoderCache):
-                        outputs[key] = past_key_value_type.from_legacy_cache(outputs[key])
-                else:
-                    outputs[key] = None
+            # elif key == "past_key_values":
+            #     past_key_value_type = kwargs.get("past_key_values")
+            #     if seek_outputs[0][key] is not None:
+            #         outputs[key] = tuple(
+            #             tuple(
+            #                 torch.stack([v[key][i][j] for v in seek_outputs]).squeeze(1).to(device)
+            #                 for j in range(len(seek_outputs[0][key][0]))
+            #             )
+            #             for i in range(len(seek_outputs[0][key]))
+            #         )
+            #         if past_key_value_type is not None and isinstance(past_key_value_type, EncoderDecoderCache):
+            #             outputs[key] = past_key_value_type.from_legacy_cache(outputs[key])
+            #     else:
+            #         outputs[key] = None
 
         return model_output_type(**outputs)
 
